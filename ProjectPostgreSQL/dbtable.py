@@ -29,58 +29,45 @@ class DbTable:
     def table_constraints(self):
         return []
 
+# метод выполнения запросов с защитой от sql-инъекций
+    def execute(self, sql, params=None):
+        try:
+            cur = self.dbconn.conn.cursor()
+            cur.execute(sql, params)
+            self.dbconn.conn.commit()
+            return cur
+        except psycopg2.Error:
+            self.dbconn.conn.rollback()
+            raise
+
     def create(self):
+        # SQL строится из имён колонок, заданных в коде (не от пользователя),
+        # поэтому конкатенация здесь безопасна
         sql = "CREATE TABLE " + self.table_name() + "("
-        arr = [k + " " + " ".join(v) for k, v in sorted(self.columns().items(), key = lambda x: x[0])]
+        arr = [k + " " + " ".join(v) for k, v in sorted(self.columns().items(), key=lambda x: x[0])]
         sql += ", ".join(arr + self.table_constraints())
         sql += ")"
-        cur = self.dbconn.conn.cursor()
-        cur.execute(sql)
-        self.dbconn.conn.commit()
+        self.execute(sql)
         return
 
     def drop(self):
         sql = "DROP TABLE IF EXISTS " + self.table_name()
-        cur = self.dbconn.conn.cursor()
-        cur.execute(sql)
-        self.dbconn.conn.commit()
+        self.execute(sql)
         return
 
     def insert_one(self, vals):
-        for i in range(0, len(vals)):
-            if type(vals[i]) == str:
-                vals[i] = "'" + vals[i] + "'"
-            else:
-                vals[i] = str(vals[i])
-        sql = "INSERT INTO " + self.table_name() + "("
-        sql += ", ".join(self.column_names_without_id()) + ") VALUES("
-        sql += ", ".join(vals) + ")"
-        cur = self.dbconn.conn.cursor()
-        cur.execute(sql)
-        self.dbconn.conn.commit()
+        cols = self.column_names_without_id()
+        sql = "INSERT INTO " + self.table_name() + "(" + ", ".join(cols) + ")"
+        sql += " VALUES(" + ", ".join(["%s"] * len(cols)) + ")"
+        self.execute(sql, list(vals))
         return
 
     def first(self):
         sql = "SELECT * FROM " + self.table_name()
-        sql += " ORDER BY "
-        sql += ", ".join(self.primary_key())
-        cur = self.dbconn.conn.cursor()
-        cur.execute(sql)
-        return cur.fetchone()        
+        sql += " ORDER BY " + ", ".join(self.primary_key())
+        return self.execute(sql).fetchone()
 
     def last(self):
         sql = "SELECT * FROM " + self.table_name()
-        sql += " ORDER BY "
-        sql += ", ".join([x + " DESC" for x in self.primary_key()])
-        cur = self.dbconn.conn.cursor()
-        cur.execute(sql)
-        return cur.fetchone()
-
-    def all(self):
-        sql = "SELECT * FROM " + self.table_name()
-        sql += " ORDER BY "
-        sql += ", ".join(self.primary_key())
-        cur = self.dbconn.conn.cursor()
-        cur.execute(sql)
-        return cur.fetchall()        
-        
+        sql += " ORDER BY " + ", ".join([x + " DESC" for x in self.primary_key()])
+        return self.execute(sql).fetchone()

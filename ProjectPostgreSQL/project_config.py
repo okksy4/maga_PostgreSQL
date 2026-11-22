@@ -12,10 +12,11 @@ class ProjectConfig:
             self.user = config['user']
             self.password = config['password']
             self.host = config['host']
+            self.port = config['port']
             self.dbtableprefix = config['dbtableprefix']
 
 # Этот метод запускается только, если запускать
 # данный файл, а не подключать его.
 if __name__ == "__main__":
     x = ProjectConfig()
-    print(x.dbfilepath)
+    print(x.dbname)

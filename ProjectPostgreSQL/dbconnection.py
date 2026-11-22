@@ -9,11 +9,13 @@ class DbConnection:
         self.user = config.user
         self.password = config.password
         self.host = config.host
+        self.port = config.port
         self.prefix = config.dbtableprefix
         self.conn = psycopg2.connect(dbname = self.dbname,
                                     user = self.user, 
                                     password = self.password,
-                                    host = self.host)
+                                    host = self.host,
+                                    port = self.port)
 
     def __del__(self):
         if self.conn:
